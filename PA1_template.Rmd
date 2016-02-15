@@ -5,21 +5,80 @@ output:
     keep_md: true
 ---
 
-
 ## Loading and preprocessing the data
+##read the activity data
+
+```{r}
+
+rawData <- read.csv("./activity.csv", colClasses = c("integer", "Date", "integer"))
+
+```
+
 
 
 
 ## What is mean total number of steps taken per day?
+## This identifes daily step counts, creates a histogram of daily step count frequency, and calculates the daily step count mean (9,354) and median (10,395) daily step count
+
+```{r}
+dailySteps <- tapply(rawData$steps, rawData$date, sum, na.rm = TRUE)
+hist(dailySteps, breaks = 25, main = "Daily Step Frequency", xlab = "Daily Step Count", xlim = range(2000:25000))
+median(dailySteps)
+mean(dailySteps)
+dev.copy(png, file = "plot1.png")
+dev.off()
+```
+
+## There's not much activity until late morning.  It's strongest from the early afternoon to early evening
+
+## This chunk of code takes the average step count by time interval across all days.  It also creates a line graph that shows the average step count by interval.  The time interval starting 8:35 has the higest average step count with 206
+
+```{r}
+dailyInterval0 <- tapply(rawData$steps, rawData$interval, mean, na.rm = TRUE)
+dailyInterval <- data.frame(interval = names(dailyInterval0), stepsavg = dailyInterval0)
+with(dailyInterval, plot(as.POSIXct(paste(interval), format = "%k"), stepsavg, type = "l", xlab = "Time", ylab = "Avg Step Count", main = "Avg Step Count by Time of Day"))
+dailyInterval[order(dailyInterval$stepsavg), ]
+dev.copy(png, file = "plot2.png")
+dev.off()
+```
 
 
+## This chunk of code breaks the data up between valid observations and NA observations.  It then assigns the NA observations a step count equal to the average step count by across all time intervals.  It also creates an average daily step count frequency histogram and calulates the mean and media.  The mean (10581)  is slightly higher to what had previously been calculated (9354)
 
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
+```{r}
+average <- mean(dailySteps)/288
+rawDataNA0 <- subset(rawData, is.na(steps))
+rawDataNA <- transform(rawDataNA, steps = average)
+rawData00 <- subset(rawData, is.na(steps) == FALSE)
+rawDataNew <- rbind(rawDataNA, rawData00)
+dailySteps <- tapply(rawDataNew$steps, rawData$date, sum)
+hist(dailySteps, breaks = 25, main = "Daily Step Frequency", xlab = "Daily Step Count", xlim = range(2000:25000))
+mean(dailySteps)
+median(dailySteps)
+dev.copy(png, file = "plot3.png")
+dev.off()
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+## This code breaks down the data between weekday and weekend observations.  It then creates 2 line graphs that show the average interval step count frequency for each
+
+```{r}
+rawDataNew1 <- subset(rawDataNew, ((weekdays(date) == c("Saturday", "Sunday")) == FALSE))
+rawDataNew1 <- transform(rawDataNew1, day = "Weekday")
+rawDataNew2 <- subset(rawDataNew, weekdays(date) == c("Saturday", "Sunday"))
+rawDataNew2 <- transform(rawDataNew2, day = "Weekend")
+
+weekdayInterval1 <- tapply(rawDataNew1$steps, rawDataNew1$interval, mean)
+data01 <- data.frame(interval = names(weekdayInterval1), stepsavg = weekdayInterval1)
+weekdayInterval2 <- tapply(rawDataNew2$steps, rawDataNew2$interval, mean)
+data02 <- data.frame(interval = names(weekdayInterval2), stepsavg = weekdayInterval2)
+
+par(mfrow = c(2, 1), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
+
+with(data01, plot(as.POSIXct(paste(interval), format = "%k"), stepsavg, type = "l", xlab = "Time (Weekdays)", ylab = "Avg Step Count"))
+with(data02, plot(as.POSIXct(paste(interval), format = "%k"), stepsavg, type = "l", xlab = "Time (Weekends)", ylab = "Avg Step Count"))
+
+dev.copy(png, file = "plot4.png")
+dev.off()
+
+```
